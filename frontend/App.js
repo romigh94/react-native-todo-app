@@ -1,100 +1,86 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect} from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, FlatList, PanResponder, Animated } from 'react-native';
-import axios from "axios";
+import { StyleSheet, Text, View, FlatList, TextInput } from 'react-native';
+//import axios from "axios";
 
 export default function App() {
 
+const [search, setSearch] = useState('')
 const [todo, setTodo] = useState([])
-const [dragging, setDragging] = useState(false)
+const [filteredTodo, setfilteredTodo] = useState([])
 
-const pan = useRef(new Animated.ValueXY()).current
 
-const panResponder = useRef(
-  PanResponder.create({
-    // Ask to be the responder:
-    onStartShouldSetPanResponder: (evt, gestureState) => true,
-    onStartShouldSetPanResponderCapture: (evt, gestureState) =>
-      true,
-    onMoveShouldSetPanResponder: (evt, gestureState) => true,
-    onMoveShouldSetPanResponderCapture: (evt, gestureState) =>
-      true,
-
-    onPanResponderGrant: (evt, gestureState) => {
-      setDragging(true)
-    },
-    onPanResponderMove: (evt, gestureState) => {
-      console.log(gestureState.moveY)
-      Animated.event([{ y: pan.y}])({ y: gestureState.moveY })
-    },
-    onPanResponderTerminationRequest: (evt, gestureState) =>
-      false,
-    onPanResponderRelease: (evt, gestureState) => {
-      // The user has released all touches while this view is the
-      // responder. This typically means a gesture has succeeded
-    },
-    onPanResponderTerminate: (evt, gestureState) => {
-      // Another component has become the responder, so this gesture
-      // should be cancelled
-    },
-    onShouldBlockNativeResponder: (evt, gestureState) => {
-      // Returns whether this component should block native components from becoming the JS
-      // responder. Returns true by default. Is currently only supported on android.
-      return true;
-    }
-  })
-).current;
 
 useEffect(() => {
-  fetchData();
-}, [])
+  fetch("http://192.168.1.232:5000/get")
+  .then((response) => response.json())
+  .then((responseJson) => {
+    setTodo(responseJson);
+    setfilteredTodo(responseJson);
+  })
+  .catch((error) => {
+    console.error(error);
+  })
+}, []);
 
 
-const fetchData = () => {
 
-  axios.get("http://localhost:5000/get")
-  .then(res => setTodo(res.data))
-  .catch(error => console.log(error))
-}
 
-const renderItem = () => {
-  ({ item }) => <Text>{item.task}</Text>
+const searchFilter = (text) => {
+  
+  if (text) {
+  const newfilteredData = todo.filter(
+    function(item) {
+      const itemData = item.task
+      ? item.task.toUpperCase() : ''.toUpperCase()
+      const textData = text.toUpperCase();
+      return itemData.indexOf(textData) > -1;
+    })
+    setfilteredTodo(newfilteredData)
+    setSearch(text);
+  } else {
+    setfilteredTodo(todo)
+    setSearch(text)
+  }
 }
 
 
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-
-      <Animated.View style={styles.AnimatedView}>
-        {renderItem}
-      </Animated.View>
       
-      <Text>
-        <h1>To do app</h1>
+      <Text style={styles.headline}>
+        To do app
       </Text>
 
-        <View style={styles.todo} {...panResponder.panHandlers}>
-          <Text style={styles.todoText}>
-            <h2>To do</h2>
+        <TextInput 
+          style={styles.textinput} 
+          placeholder="Search for tasks here..." 
+          onChangeText={(text) => searchFilter(text)} 
+          value={search} 
+          />
+
+        <View style={styles.todo}>
+          <Text style={styles.Title}>
+            To do
           </Text>
           <FlatList 
-            scrollEnabled={!dragging}
-            data={todo}
-            renderItem={renderItem}
+            data={filteredTodo}
+            keyExtractor={(index) => index.toString()}
+            renderItem={({ item }) => <Text>{item.id} {'.'} {item.task.toUpperCase()}</Text>}
           />
         </View>
 
-        <View style={styles.inprogress} {...panResponder.onPanResponderRelease}>
-          <Text>
-            <h2>In progress</h2>
+        <View style={styles.inprogress}>
+          <Text style={styles.Title}>
+            In progress
           </Text>
 
         </View>
 
-        <View style={styles.done} {...panResponder.panHandlers}>
-          <Text>
-            <h2>Done</h2>
+        <View style={styles.done}>
+          <Text style={styles.Title}>
+            Done
           </Text>
         </View>
 
@@ -103,30 +89,37 @@ const renderItem = () => {
 }
 
 const styles = StyleSheet.create({
+  headline: {
+    fontSize: 30
+  },
+  Title: {
+    fontSize: 18
+  },
+  textinput: {
+    padding: 8,
+    borderWidth: 1,
+    margin: 5,
+    width: 300
+  },
   container: {
-    flex: 1,
+    flex: 2,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  AnimatedView: {
-    backgroundColor: 'pink',
-    width: 100,
-    height: 100
-  },
   todo: {
     backgroundColor: 'lightgreen',
-    width: 200,
+    width: 300,
     height: 200
   },
   inprogress: {
     backgroundColor: 'pink',
-    width: 200,
+    width: 300,
     height: 200
   },
   done: {
     backgroundColor: 'lightblue',
-    width: 200,
+    width: 300,
     height: 200
   }
 });
