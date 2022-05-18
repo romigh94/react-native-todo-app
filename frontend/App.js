@@ -1,13 +1,14 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, FlatList, TextInput } from 'react-native';
-//import axios from "axios";
+import { StyleSheet, Text, View, FlatList, PanResponder, TextInput, Animated } from 'react-native';
 
 export default function App() {
 
 const [search, setSearch] = useState('')
-const [todo, setTodo] = useState([])
-const [filteredTodo, setfilteredTodo] = useState([])
+const [tasks, setTasks] = useState([])
+const [filteredTasks, setfilteredTasks] = useState([])
+
+const pan = useRef(new Animated.ValueXY()).current;
 
 
 
@@ -15,8 +16,8 @@ useEffect(() => {
   fetch("http://192.168.1.232:5000/get")
   .then((response) => response.json())
   .then((responseJson) => {
-    setTodo(responseJson);
-    setfilteredTodo(responseJson);
+    setTasks(responseJson);
+    setfilteredTasks(responseJson);
   })
   .catch((error) => {
     console.error(error);
@@ -25,29 +26,92 @@ useEffect(() => {
 
 
 
-
 const searchFilter = (text) => {
-  
   if (text) {
-  const newfilteredData = todo.filter(
-    function(item) {
+  const newfilteredTasks = tasks.filter(
+    (item) => {
       const itemData = item.task
-      ? item.task.toUpperCase() : ''.toUpperCase()
-      const textData = text.toUpperCase();
+      ? item.task : ''
+      const textData = text;
       return itemData.indexOf(textData) > -1;
     })
-    setfilteredTodo(newfilteredData)
+    setfilteredTasks(newfilteredTasks)
     setSearch(text);
   } else {
-    setfilteredTodo(todo)
+    setfilteredTasks(tasks)
     setSearch(text)
   }
 }
 
+const panResponder = useRef(
+  PanResponder.create({
+    // Ask to be the responder:
+    onStartShouldSetPanResponder: (evt, gestureState) => true,
+    onStartShouldSetPanResponderCapture: (evt, gestureState) =>
+      true,
+    onMoveShouldSetPanResponder: (evt, gestureState) => true,
+    onMoveShouldSetPanResponderCapture: (evt, gestureState) =>
+      true,
+
+    onPanResponderGrant: (evt, gestureState) => {
+      // The gesture has started. Show visual feedback so the user knows
+      // what is happening!
+      // gestureState.d{x,y} will be set to zero now
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      console.log(gestureState.moveY)
+      Animated.event([{y: pan.y}])({y: gestureState.moveY})
+      //Mapping gestureState.moveY that is equal to pan.y
+    },
+    onPanResponderTerminationRequest: (evt, gestureState) =>
+      false, 
+      // False - för att den inte ska bli avbruten när man drag & drops. Om det är på true, så kan den avbrytas tidigare.
+    onPanResponderRelease: (evt, gestureState) => {
+      // The user has released all touches while this view is the
+      // responder. This typically means a gesture has succeeded
+    },
+    onPanResponderTerminate: (evt, gestureState) => {
+      // Another component has become the responder, so this gesture
+      // should be cancelled
+    },
+    onShouldBlockNativeResponder: (evt, gestureState) => {
+      // Returns whether this component should block native components from becoming the JS
+      // responder. Returns true by default. Is currently only supported on android.
+      return true;
+    }
+  })
+).current;
+
+const reset = () => {
+  
+}
+
+
+const renderItem = ({ item }) => {
+  return (
+<View style={styles.renderItemView}  {...panResponder.panHandlers}>
+    <View> 
+    <Text style={styles.DragandDropIcon}>@</Text> 
+    </View>
+    <Text style={styles.items}>{item.task}</Text>
+</View>
+  )
+}
 
   return (
+
     <View style={styles.container}>
       <StatusBar style="auto" />
+
+      <Animated.View style={{
+          backgroundColor: 'black',
+          zIndex: 2,
+          height: 20,
+          width: "100%",
+          top: pan.getLayout().top
+        }}>
+          {renderItem}
+        </Animated.View>
       
       <Text style={styles.headline}>
         To do app
@@ -55,32 +119,31 @@ const searchFilter = (text) => {
 
         <TextInput 
           style={styles.textinput} 
-          placeholder="Search for tasks here..." 
+          placeholder="Filtrate tasks here..." 
           onChangeText={(text) => searchFilter(text)} 
           value={search} 
           />
 
-        <View style={styles.todo}>
+        <View style={styles.innerContainers}>
           <Text style={styles.Title}>
-            To do
+            TASKS
           </Text>
           <FlatList 
-            data={filteredTodo}
-            keyExtractor={(index) => index.toString()}
-            renderItem={({ item }) => <Text>{item.id} {'.'} {item.task.toUpperCase()}</Text>}
+            data={filteredTasks}
+            renderItem={renderItem}
           />
         </View>
 
-        <View style={styles.inprogress}>
+        <View style={styles.innerContainers}>
           <Text style={styles.Title}>
-            In progress
+            IN PROGRESS
           </Text>
 
         </View>
 
-        <View style={styles.done}>
+        <View style={styles.innerContainers}>
           <Text style={styles.Title}>
-            Done
+            DONE
           </Text>
         </View>
 
@@ -90,7 +153,7 @@ const searchFilter = (text) => {
 
 const styles = StyleSheet.create({
   headline: {
-    fontSize: 30
+    fontSize: 30,
   },
   Title: {
     fontSize: 18
@@ -102,24 +165,24 @@ const styles = StyleSheet.create({
     width: 300
   },
   container: {
-    flex: 2,
-    backgroundColor: '#fff',
+    flex: 1,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  todo: {
-    backgroundColor: 'lightgreen',
+  innerContainers: {
+    borderWidth: 1,
     width: 300,
-    height: 200
+    height: 200,
+    padding: 5
   },
-  inprogress: {
-    backgroundColor: 'pink',
-    width: 300,
-    height: 200
+  items: {
+    padding: 5
   },
-  done: {
-    backgroundColor: 'lightblue',
-    width: 300,
-    height: 200
+  renderItemView: {
+    flexDirection: 'row',
+  },
+  DragandDropIcon: {
+    padding: 5
   }
 });
