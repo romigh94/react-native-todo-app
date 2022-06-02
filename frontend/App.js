@@ -1,17 +1,24 @@
 import React, {useState, useEffect} from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, FlatList, TextInput, TouchableOpacity } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { 
+        StyleSheet, 
+        Text, 
+        View, 
+        FlatList, 
+        TextInput, 
+        TouchableOpacity, 
+        SafeAreaView, 
+        } from 'react-native';
 
-const Stack = createNativeStackNavigator();
 
-function Todo({navigation}) {
+export default function App() {
 
   const [search, setSearch] = useState('')
   const [tasks, setTasks] = useState([])
   const [filteredTasks, setfilteredTasks] = useState([])
-
+  //const [isSelected, setisSelected] = useState(false)
+  const [fromTodo, setfromTodo] = useState(null)
+  const [fromInProgress, setfromInProgress] = useState(null)
 
 useEffect(() => {
   fetch("http://192.168.1.232:5000/get")
@@ -23,7 +30,9 @@ useEffect(() => {
   .catch((error) => {
     console.error(error);
   })
-}, []);
+
+
+}, []);   
 
   const searchFilter = (text) => {
     if (text) {
@@ -31,7 +40,7 @@ useEffect(() => {
       (item) => {
         const itemData = item.task ? item.task : ''
         const textData = text;
-        return itemData.indexOf(textData) > -1;
+        return itemData.indexOf(textData) > -1
       })
       setfilteredTasks(newfilteredTasks)
       setSearch(text);
@@ -41,15 +50,18 @@ useEffect(() => {
     }
   }
   
-  
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item, index }) => {
     return (
-      <TouchableOpacity style={styles.taskview}>
-          <Text style={styles.items} 
-          onPress={() => navigation.navigate('InProgress', {item: item.task})}>{item.task}</Text>
+    <SafeAreaView>
+      <TouchableOpacity onPress={() => setfromTodo(item.task)} style={styles.taskview}>
+          <Text style={styles.items} >
+            {item.task}
+          </Text>
       </TouchableOpacity>
+    </SafeAreaView>
     )
   }
+
 
 
   return (
@@ -68,44 +80,33 @@ useEffect(() => {
           <FlatList 
             data={filteredTasks}
             renderItem={renderItem}
+            keyExtractor={item => item.id}
           />
         </View>
-      <StatusBar style="auto" />
+
+        <View style={styles.innerContainers}>
+          <Text>In progress</Text>
+        <View>
+           <TouchableOpacity style={styles.taskview} onPress={() => setfromInProgress(fromTodo)}>
+            <Text style={styles.items} >
+              {fromTodo}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        </View>
+
+        <View style={styles.innerContainers}>
+          <Text>Done</Text>
+          <View>
+            <Text>{fromInProgress}</Text>
+          </View>
+        </View>
+
     </View>
   )
 }
 
-function InProgress({navigation, route}) {
-  return (
-    <View style={styles.container}>
-      <TouchableOpacity>
-      <Text onPress={() => navigation.navigate('Done', {item: route.params.item})}>{route.params.item}</Text>
-      </TouchableOpacity>
-      <StatusBar style="auto" />
-    </View>
-  )
-}
 
-function Done({navigation, route}) {
-  return (
-    <View style={styles.container}>
-      <Text>{route.params.item}</Text>
-      <StatusBar style="auto" />
-    </View>
-  )
-}
-
-export default function App() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Todo" component={Todo} />
-        <Stack.Screen name="InProgress" component={InProgress} />
-        <Stack.Screen name="Done" component={Done} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  )
-}
 
 
 const styles = StyleSheet.create({
@@ -114,7 +115,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 30
+    padding: 30,
+    marginTop: 20
   },
   Title: {
     fontSize: 20,
@@ -127,8 +129,19 @@ const styles = StyleSheet.create({
     width: 300
   },
   items: {
+    padding: 5,
+    width: "80%"
+
+  },
+  innerContainers: {
+    borderWidth: 1,
+    width: 300,
+    height: 200,
     padding: 5
   },
+  button: {
+    width: 10
+  }
 })
 
 
